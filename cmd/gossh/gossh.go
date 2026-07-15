@@ -19,18 +19,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/andesli/gossh/enc"
 	"github.com/andesli/gossh/help"
 	"github.com/andesli/gossh/logs"
 	"github.com/andesli/gossh/machine"
 	"github.com/andesli/gossh/run"
 	"github.com/andesli/gossh/tools"
-	"path/filepath"
-	"strings"
-	"sync"
 )
 
-//github.com/andesli/gossh version
+// github.com/andesli/gossh version
 const (
 	AppVersion = "gossh 0.7"
 )
@@ -53,6 +54,8 @@ var (
 	force     = flag.Bool("f", false, "force to run even if it is not safe")
 	psafe     = flag.Bool("s", false, "if -s is setting, gossh will exit when error occurs")
 	pkey      = flag.String("key", "", "aes key for password decrypt and encryption")
+	pknown    = flag.String("knownhosts", "", "known_hosts file path for SSH host key verification")
+	pinsecure = flag.Bool("insecure-ignore-host-key", false, "skip SSH host key verification")
 	blackList = []string{"rm", "mkfs", "mkfs.ext3", "make.ext2", "make.ext4", "make2fs", "shutdown", "reboot", "init", "dd"}
 
 	//log options
@@ -67,11 +70,17 @@ var (
 	ptimeout = flag.Int("timeout", 10, "ssh timeout setting")
 )
 
-//main
+// main
 func main() {
+	exitCode := 0
+	defer func() {
+		if exitCode != 0 {
+			os.Exit(exitCode)
+		}
+	}()
 
 	usage := func() {
-		fmt.Println(help.Help)
+		fmt.Print(help.Help)
 	}
 
 	flag.Parse()
@@ -85,6 +94,7 @@ func main() {
 	if *pkey != "" {
 		enc.SetKey([]byte(*pkey))
 	}
+	machine.ConfigureHostKey(*pknown, *pinsecure)
 
 	if flag.NArg() < 1 {
 		usage()
@@ -120,10 +130,18 @@ func main() {
 		cmd := flag.Arg(0)
 
 		if flag := tools.CheckSafe(cmd, blackList); !flag && *force == false {
-			fmt.Printf("Dangerous command in %s", cmd)
-			fmt.Printf("You can use the `-f` option to force to excute")
+			fmt.Printf("Dangerous command in %s\n", cmd)
+			fmt.Printf("You can use the `-f` option to force to excute\n")
 			log.Error("Dangerous command in %s", cmd)
 			return
+		}
+
+		// 增强的删除安全保护：对 rm 命令进行路径预览和二次确认
+		if tools.IsRmCommand(cmd) {
+			if !tools.ConfirmDelete(cmd) {
+				fmt.Println("Delete operation cancelled.")
+				return
+			}
 		}
 
 		puser := run.NewUser(*user, *port, *psw, *force, *encFlag)
@@ -131,14 +149,15 @@ func main() {
 
 		if *host != "" {
 			log.Info("[servers]=%s", *host)
-			run.SingleRun(*host, cmd, puser, *force, *ptimeout)
+			if !run.SingleRun(*host, cmd, puser, *force, *ptimeout) {
+				exitCode = 1
+			}
 
 		} else {
-			cr := make(chan machine.Result)
 			ccons := make(chan struct{}, *cons)
-			wg := &sync.WaitGroup{}
-			run.ServersRun(cmd, puser, wg, cr, *ipFile, ccons, *psafe, *ptimeout)
-			wg.Wait()
+			if !run.ServersRun(cmd, puser, *ipFile, ccons, *psafe, *ptimeout) {
+				exitCode = 1
+			}
 		}
 
 	//push file or dir  to remote server
@@ -156,13 +175,14 @@ func main() {
 		puser := run.NewUser(*user, *port, *psw, *force, *encFlag)
 		if *host != "" {
 			log.Info("[servers]=%s", *host)
-			run.SinglePush(*host, src, dst, puser, *force, *ptimeout)
+			if !run.SinglePush(*host, src, dst, puser, *force, *ptimeout) {
+				exitCode = 1
+			}
 		} else {
-			cr := make(chan machine.Result, 20)
 			ccons := make(chan struct{}, *cons)
-			wg := &sync.WaitGroup{}
-			run.ServersPush(src, dst, puser, *ipFile, wg, ccons, cr, *ptimeout)
-			wg.Wait()
+			if !run.ServersPush(src, dst, puser, *ipFile, ccons, *ptimeout) {
+				exitCode = 1
+			}
 		}
 
 	//pull file from remote server
@@ -181,9 +201,13 @@ func main() {
 		puser := run.NewUser(*user, *port, *psw, *force, *encFlag)
 		if *host != "" {
 			log.Info("[servers]=%s", *host)
-			run.SinglePull(*host, puser, src, dst, *force)
+			if !run.SinglePull(*host, puser, src, dst, *force, *ptimeout) {
+				exitCode = 1
+			}
 		} else {
-			run.ServersPull(src, dst, puser, *ipFile, *force)
+			if !run.ServersPull(src, dst, puser, *ipFile, *force, *ptimeout) {
+				exitCode = 1
+			}
 		}
 
 	default:
@@ -191,7 +215,7 @@ func main() {
 	}
 }
 
-//setting log
+// setting log
 func initLog() error {
 	switch *plogLevel {
 	case "debug":

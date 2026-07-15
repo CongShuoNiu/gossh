@@ -118,6 +118,9 @@ Usage of gossh:
   -c int
         the number of concurrency when b (default 30)
 
+  -timeout int
+        per-host SSH command/file-transfer timeout in seconds (default 10)
+
   -s    if -s is setting, gossh will exit when error occurs
         
   -e    password is Encrypted 
@@ -125,6 +128,12 @@ Usage of gossh:
   -key string
         aes key for password decrypt and encryption
         
+  -knownhosts string
+        known_hosts file path for SSH host key verification (default "~/.ssh/known_hosts")
+
+  -insecure-ignore-host-key
+        skip SSH host key verification. Only use this in trusted networks or temporary recovery workflows.
+
   -f    force to run even if it is not safe
 
   -s    if -s is setting, gossh will exit when error occurs
@@ -148,7 +157,71 @@ Usage of ./passtool:
 ```
 
 
-### 4.3 Config file 
+### 4.3 Prerequisites for passwordless batch operations
+
+To operate remote machines without entering a password each time, complete the following two steps once per target host:
+
+#### Step 1: Trust the SSH host key
+
+gossh verifies SSH host keys through `known_hosts` by default to prevent man-in-the-middle attacks. Add the target host's key first:
+
+```bash
+ssh-keyscan <target-ip> >> ~/.ssh/known_hosts
+
+# Or for a batch of IPs:
+ssh-keyscan -f ip_list.txt >> ~/.ssh/known_hosts
+```
+
+Verify the key was added:
+
+```bash
+ssh-keygen -F <target-ip> -f ~/.ssh/known_hosts
+```
+
+#### Step 2: Choose an authentication method
+
+**Option A — GSSAPI/Kerberos (recommended for enterprise environments)**
+
+If your organization uses Kerberos (e.g., Active Directory or FreeIPA), authenticate once with `kinit` and gossh will use your ticket automatically — no password needed:
+
+```bash
+# Obtain a Kerberos ticket
+kinit <username>@<REALM>
+
+# Verify the ticket
+klist
+
+# gossh now connects without -p
+gossh -t cmd -h <target-ip> -u <username> "hostname"
+```
+
+> **Note**: GSSAPI support requires CGO (`CGO_ENABLED=1 go build`). On macOS, the system GSS framework is used; on Linux, `libgssapi-krb5-2` or equivalent must be installed.
+
+**Option B — Password (plain or encrypted)**
+
+Pass the password explicitly, or store it in the batch IP file:
+
+```bash
+# Plain password
+gossh -t cmd -h <target-ip> -u root -p <password> "hostname"
+
+# Encrypted password (encrypt with passtool first)
+gossh -t cmd -h <target-ip> -u root -p <ciphertext> -e -key <aes-key> "hostname"
+```
+
+#### Verification
+
+After completing both steps, a passwordless batch command should work:
+
+```bash
+# GSSAPI (no -p flag)
+gossh -t cmd -h <target-ip> -u <username> "hostname && whoami"
+
+# Or with password
+gossh -t cmd -h <target-ip> -u root -p <password> "hostname"
+```
+
+### 4.4 Config file 
 
 The -i parameter is used to specify the batch operation host ip file. Each line of the file has 4 fields ip|port|user|password, separated by |. The four fields are: machine IP, ssh port, ssh user name, ssh password. The ip field is required, and the other three fields are optional. The following configurations are all legal.
 
@@ -168,18 +241,45 @@ If no optional fields are provided, gossh obtains the command line parameters th
 -P 22
 -p default empty 
 -t cmd
+-timeout 10
 
 ```
 **Remark**  
 
 - If the password field is empty, gossh will find the relevant process from the db plugin by default, refer to 5.
 - If the password field is encrypted, you need to specify the -e flag. -e is an overall switch: the passwords in the password file are either all encrypted or not.
+- SSH host key verification is enabled by default through `~/.ssh/known_hosts`. Use `-knownhosts` to specify another file. Use `-insecure-ignore-host-key` only when the target network is trusted or during temporary recovery.
+- `-timeout` is a per-host timeout shared by command execution, push, and pull. For large files, set a larger value to avoid interrupting file transfer.
+- Batch operations print a final summary with total, successful, failed, and skipped target hosts. If any target host fails or times out, gossh exits with a non-zero process code.
+- Successful SCP push and pull operations print transfer observability fields: `transfer_bytes`, `transfer_duration`, and `transfer_throughput`.
 
-### 4.4 Example 
+### 4.5 Large file transfer
+
+When pushing a large file from one machine to multiple remote hosts, increase `-timeout` according to the file size and network bandwidth. The timeout is applied independently to each host.
+
+```
+gossh -t push -i ip.txt -c 3 -timeout 3600 /path/big.tar.gz /data/
+```
+
+If host key verification is enabled, make sure all target hosts are already in `~/.ssh/known_hosts`, or specify a known_hosts file explicitly:
+
+```
+gossh -t push -i ip.txt -c 3 -timeout 3600 -knownhosts ~/.ssh/known_hosts /path/big.tar.gz /data/
+```
+
+Successful file transfers include per-host transfer metrics:
+
+```
+transfer_bytes=1073741824
+transfer_duration=28.731s
+transfer_throughput=35.64 MB/s
+```
+
+### 4.6 Example
 
 [example](https://github.com/andesli/gossh/blob/master/docs/example.md)detail。
 
-### 4.5 Log 
+### 4.7 Log
 
 [logs](https://github.com/andesli/gossh/blob/master/docs/output_format.md)detail。
 
@@ -190,7 +290,9 @@ If no optional fields are provided, gossh obtains the command line parameters th
 
 ## 6.Security
 
-[Safety management](https://github.com/andesli/gossh/blob/master/docs/safe.md)detail
+[Safety management](https://github.com/andesli/gossh/blob/master/docs/safe.md)detail.
+
+gossh verifies SSH host keys through `known_hosts` by default. This helps prevent man-in-the-middle attacks. If the default `~/.ssh/known_hosts` file does not exist, create it with `ssh-keyscan` or pass `-knownhosts path`. The `-insecure-ignore-host-key` option keeps the old insecure behavior and should only be used in trusted networks or temporary recovery workflows.
 
 
 ## 8.Scenes
@@ -209,6 +311,3 @@ Not every company is a BAT and has established an automated operation and mainte
 [FAQ](https://github.com/andesli/gossh/blob/master/docs/faq.md)
 
 Contact me for any questions<email.tata@qq.com>
-
-
-

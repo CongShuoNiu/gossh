@@ -17,13 +17,14 @@
 package tools
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
 var (
 	blackList = []string{"rm", "mkfs", "mkfs.ext3", "make.ext2", "make.ext4", "make2fs", "shutdown", "reboot", "init", "dd"}
 	cmds      = []string{"rm -f /", "mkfs /dev/fioa", "shutdown now", "reboot"}
-	files     = []string{"/etc/fstab", "/etc/profile"}
 )
 
 func TestCheckSafe(t *testing.T) {
@@ -36,18 +37,34 @@ func TestCheckSafe(t *testing.T) {
 }
 
 func TestFileExists(t *testing.T) {
-	for _, f := range files {
-		if !FileExists(f) {
-			t.Errorf("FileExists fail")
-		}
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "exists.txt")
+	if err := os.WriteFile(tmpFile, []byte("ok"), 0600); err != nil {
+		t.Fatalf("create temp file: %v", err)
 	}
-	if FileExists("/xxxxx/xxx.txt") {
-		t.Errorf("FileExists fail")
+
+	if !FileExists(tmpFile) {
+		t.Errorf("FileExists should return true for a regular file")
+	}
+	if FileExists(tmpDir) {
+		t.Errorf("FileExists should return false for a directory")
+	}
+	if FileExists(filepath.Join(tmpDir, "missing.txt")) {
+		t.Errorf("FileExists should return false for a missing file")
 	}
 }
 
 func TestPathExists(t *testing.T) {
-	if !PathExists("/home") {
-		t.Errorf("PathExists Fail")
+	tmpDir := t.TempDir()
+	tmpFile := filepath.Join(tmpDir, "file.txt")
+	if err := os.WriteFile(tmpFile, []byte("ok"), 0600); err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+
+	if !PathExists(tmpDir) {
+		t.Errorf("PathExists should return true for a directory")
+	}
+	if PathExists(tmpFile) {
+		t.Errorf("PathExists should return false for a regular file")
 	}
 }

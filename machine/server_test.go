@@ -17,18 +17,25 @@
 package machine
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
+// initServer 从环境变量构造集成测试使用的 SSH 服务端，避免单元测试依赖固定机器。
 func initServer() *Server {
 	s := &Server{
-		Ip:     "127.0.0.1",
-		Port:   "22",
-		User:   "root",
+		Ip:     os.Getenv("GOSSH_TEST_SSH_HOST"),
+		Port:   os.Getenv("GOSSH_TEST_SSH_PORT"),
+		User:   os.Getenv("GOSSH_TEST_SSH_USER"),
 		Action: "cmd",
 		Cmd:    "uname",
-		// password
-		Psw: "hello@123",
+		Psw:    os.Getenv("GOSSH_TEST_SSH_PASSWORD"),
+	}
+
+	if s.Port == "" {
+		s.Port = "22"
 	}
 
 	return s
@@ -45,11 +52,48 @@ func TestSetPsw(t *testing.T) {
 */
 
 func TestRunCmd(t *testing.T) {
+	if os.Getenv("GOSSH_TEST_SSH_HOST") == "" {
+		t.Skip("set GOSSH_TEST_SSH_HOST to enable SSH integration test")
+	}
+
 	s := initServer()
 	//	s.SetPsw()
 
 	_, err := s.RunCmd()
 	if err != nil {
 		t.Fail()
+	}
+}
+
+func TestCreateShellQuotesRemotePath(t *testing.T) {
+	cmd := createShell("/tmp/a path/it's.txt")
+
+	if want := `'/tmp/a path/it'\''s.txt'`; !strings.Contains(cmd, want) {
+		t.Fatalf("createShell should quote remote path, want %q in %q", want, cmd)
+	}
+}
+
+func TestNewHostKeyCallbackRequiresKnownHosts(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "known_hosts")
+
+	if _, err := newHostKeyCallback(HostKeyConfig{KnownHostsPath: missing}); err == nil {
+		t.Fatalf("newHostKeyCallback should fail when known_hosts is missing")
+	}
+}
+
+func TestNewHostKeyCallbackAllowsExplicitInsecureMode(t *testing.T) {
+	callback, err := newHostKeyCallback(HostKeyConfig{InsecureIgnoreHostKey: true})
+	if err != nil {
+		t.Fatalf("newHostKeyCallback insecure mode returned error: %v", err)
+	}
+	if callback == nil {
+		t.Fatalf("newHostKeyCallback insecure mode returned nil callback")
+	}
+}
+
+func TestDefaultKnownHostsPath(t *testing.T) {
+	path := defaultKnownHostsPath()
+	if !strings.HasSuffix(path, filepath.Join(".ssh", "known_hosts")) {
+		t.Fatalf("defaultKnownHostsPath() = %q, want suffix .ssh/known_hosts", path)
 	}
 }

@@ -31,6 +31,16 @@ USAGE
 		gossh -t push -i ip_filename -P port(default 22) -u user(default root) -p passswrod [-f] localfile  remotepath 
 		gosh -t pull -i ip_filename -P port(default 22) -u user(default root) -p passswrod [-f] remotefile localpath
 
+OPTIONS
+        -timeout seconds
+                per-host SSH command/file-transfer timeout in seconds. Default: 10.
+
+        -knownhosts path
+                known_hosts file path for SSH host key verification. Default: ~/.ssh/known_hosts.
+
+        -insecure-ignore-host-key
+                skip SSH host key verification. Only use this in trusted networks or temporary recovery workflows.
+
 EMAIL
     	email.tata@qq.com 
 `
