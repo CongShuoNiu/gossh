@@ -1,0 +1,45 @@
+README.md
+  s_29ff44f5b40b04::t_c147c5297e9cc2 3 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a570355a5743430e1e9e95a","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":3}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a342e6975ada0cc82c49ca0a38a123fa14a185a5",
+  "prompts": {},
+  "sessions": {
+    "s_29ff44f5b40b04": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a55d7c4a5743430e1e9da2b",
+        "model": "DeepSeek-V4-Pro__dev"
+      },
+      "human_author": "17631153498 <linyan7890ly@gmail.com>"
+    }
+  },
+  "attestation_metadata": {
+    "README.md": [
+      {
+        "hash": "s_29ff44f5b40b04::t_c147c5297e9cc2",
+        "line_ranges": [
+          {
+            "Single": 3
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a570355a5743430e1e9e95a",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 3
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {}
+}
