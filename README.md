@@ -1,6 +1,6 @@
 # gossh
 
-[中文]([https://github.com/CongShuoNiu/gossh/blob/master/README_CN.md])
+[中文](https://github.com/CongShuoNiu/gossh/blob/master/README_CN.md)
 
 ## 1.What's gossh
 
@@ -16,7 +16,7 @@ Three core functions of gossh:
 2. Push local files or folders to remote hosts.
 3. Pull files from the remote host to the local.
 
-![功能](https://github.com/andesli/gossh/raw/master/docs/images/gossh_function.png)
+![功能](https://github.com/CongShuoNiu/gossh/raw/master/docs/images/gossh_function.png)
 
 ## 3.gossh operating mode
 
@@ -45,7 +45,7 @@ The reason why the error exit is not provided in the parallel mode is that it is
 ```
 #To build gossh from the source code yourself you need to have a working Go environment with version 1.12 or greater installed.
 
-cd $GOPATH/src && git clone https://github.com/andesli/gossh.git
+cd $GOPATH/src && git clone https://github.com/CongShuoNiu/gossh.git
 cd gossh
 
 //build gossh
@@ -81,7 +81,7 @@ bin
         `-- passtool.exe
 ```
 
-[dowload](https://github.com/andesli/gossh/blob/master/bin)
+[dowload](https://github.com/CongShuoNiu/gossh/blob/master/bin)
 
 
 ### 4.2Usage
@@ -277,20 +277,20 @@ transfer_throughput=35.64 MB/s
 
 ### 4.6 Example
 
-[example](https://github.com/andesli/gossh/blob/master/docs/example.md)detail。
+[example](https://github.com/CongShuoNiu/gossh/blob/master/docs/example.md)detail。
 
 ### 4.7 Log
 
-[logs](https://github.com/andesli/gossh/blob/master/docs/output_format.md)detail。
+[logs](https://github.com/CongShuoNiu/gossh/blob/master/docs/output_format.md)detail。
 
 
 ## 5.Password management
 
-[Password management](https://github.com/andesli/gossh/blob/master/docs/password.md)detail。
+[Password management](https://github.com/CongShuoNiu/gossh/blob/master/docs/password.md)detail。
 
 ## 6.Security
 
-[Safety management](https://github.com/andesli/gossh/blob/master/docs/safe.md)detail.
+[Safety management](https://github.com/CongShuoNiu/gossh/blob/master/docs/safe.md)detail.
 
 gossh verifies SSH host keys through `known_hosts` by default. This helps prevent man-in-the-middle attacks. If the default `~/.ssh/known_hosts` file does not exist, create it with `ssh-keyscan` or pass `-knownhosts path`. The `-insecure-ignore-host-key` option keeps the old insecure behavior and should only be used in trusted networks or temporary recovery workflows.
 
@@ -308,6 +308,6 @@ Not every company is a BAT and has established an automated operation and mainte
 
 ## 9. FAQ
 
-[FAQ](https://github.com/andesli/gossh/blob/master/docs/faq.md)
+[FAQ](https://github.com/CongShuoNiu/gossh/blob/master/docs/faq.md)
 
 Contact me for any questions<email.tata@qq.com>
