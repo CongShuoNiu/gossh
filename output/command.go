@@ -28,6 +28,14 @@ const (
 	TIMEOUT = 4500
 )
 
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorCyan   = "\033[36m"
+)
+
 // new print result
 func Print(res machine.Result) {
 	fmt.Printf("ip=%s\n", res.Ip)
@@ -48,14 +56,15 @@ func Print(res machine.Result) {
 
 // PrintBatchSummary 输出批量操作的聚合结果，帮助运维人员快速判断影响面。
 func PrintBatchSummary(total, success, skipped int, failedHosts []string) {
-	fmt.Printf("summary_total=%d\n", total)
-	fmt.Printf("summary_success=%d\n", success)
-	fmt.Printf("summary_failed=%d\n", len(failedHosts))
-	fmt.Printf("summary_skipped=%d\n", skipped)
+	fmt.Println(colorize("执行汇总", colorCyan))
+	fmt.Printf("总数=%d\n", total)
+	fmt.Printf("成功=%s\n", colorize(fmt.Sprintf("%d", success), colorGreen))
+	fmt.Printf("失败=%s\n", colorize(fmt.Sprintf("%d", len(failedHosts)), colorRed))
+	fmt.Printf("跳过=%s\n", colorize(fmt.Sprintf("%d", skipped), colorYellow))
 	if len(failedHosts) > 0 {
-		fmt.Printf("summary_failed_hosts=%s\n", strings.Join(failedHosts, ","))
+		fmt.Printf("失败主机=%s\n", colorize(strings.Join(failedHosts, ","), colorRed))
 	} else {
-		fmt.Printf("summary_failed_hosts=\n")
+		fmt.Printf("失败主机=\n")
 	}
 	fmt.Println("----------------------------------------------------------")
 }
@@ -121,4 +130,9 @@ func formatBytes(bytes float64) string {
 		return fmt.Sprintf("%.0f %s", value, unit)
 	}
 	return fmt.Sprintf("%.2f %s", value, unit)
+}
+
+// colorize 为终端输出添加 ANSI 颜色，便于快速识别执行状态。
+func colorize(s, color string) string {
+	return color + s + colorReset
 }

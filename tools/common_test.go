@@ -19,6 +19,7 @@ package tools
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -66,5 +67,35 @@ func TestPathExists(t *testing.T) {
 	}
 	if PathExists(tmpFile) {
 		t.Errorf("PathExists should return false for a regular file")
+	}
+}
+
+// TestEnhanceListCommandSimple 验证简单 ls 命令会增强为按文件类型着色的远端脚本。
+func TestEnhanceListCommandSimple(t *testing.T) {
+	got := EnhanceListCommand("ls /home")
+	if got == "ls /home" {
+		t.Fatalf("EnhanceListCommand() should enhance simple ls command")
+	}
+	if !strings.Contains(got, "gossh_color_ls '/home'") {
+		t.Fatalf("EnhanceListCommand() = %q, want gossh_color_ls with quoted path", got)
+	}
+}
+
+// TestEnhanceListCommandKeepsComplexCommands 验证复杂 shell 命令不会被自动改写。
+func TestEnhanceListCommandKeepsComplexCommands(t *testing.T) {
+	cmd := "ls /home | wc -l"
+	if got := EnhanceListCommand(cmd); got != cmd {
+		t.Fatalf("EnhanceListCommand() = %q, want original command", got)
+	}
+}
+
+// TestEnhanceListCommandWithOptions 验证带选项的 ls 使用 GNU ls 原生颜色能力。
+func TestEnhanceListCommandWithOptions(t *testing.T) {
+	got := EnhanceListCommand("ls -la /tmp")
+	if !strings.Contains(got, "--color=always") {
+		t.Fatalf("EnhanceListCommand() = %q, want --color=always", got)
+	}
+	if !strings.Contains(got, "-F") {
+		t.Fatalf("EnhanceListCommand() = %q, want -F type suffix", got)
 	}
 }

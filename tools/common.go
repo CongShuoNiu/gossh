@@ -25,6 +25,41 @@ import (
 	"strings"
 )
 
+const colorListShell = `gossh_print_entry() {
+  item="$1"
+  name="${item##*/}"
+  if [ -L "$item" ]; then
+    printf '\033[36m%s@\033[0m\n' "$name"
+  elif [ -d "$item" ]; then
+    printf '\033[34m%s/\033[0m\n' "$name"
+  elif [ -x "$item" ]; then
+    printf '\033[32m%s*\033[0m\n' "$name"
+  elif gossh_is_script "$item" "$name"; then
+    printf '\033[31m%s\033[0m\n' "$name"
+  else
+    printf '\033[37m%s\033[0m\n' "$name"
+  fi
+}
+gossh_is_script() {
+  case "$2" in
+    *.sh|*.bash|*.py|*.pl|*.rb|*.awk|*.sed) return 0 ;;
+  esac
+  head -c 2 "$1" 2>/dev/null | grep -q '^#!'
+}
+gossh_color_ls() {
+  for target in "$@"; do
+    if [ -d "$target" ]; then
+      for item in "$target"/*; do
+        [ -e "$item" ] || continue
+        gossh_print_entry "$item"
+      done
+    else
+      [ -e "$target" ] && gossh_print_entry "$target"
+    fi
+  done
+}
+gossh_color_ls`
+
 // CriticalPaths 定义了受保护的系统关键路径，
 // 删除这些路径可能导致系统不可用。
 var CriticalPaths = []string{
@@ -62,6 +97,59 @@ func CheckSafe(cmd string, blacks []string) bool {
 		}
 	}
 	return true
+}
+
+// EnhanceListCommand 将简单 ls 命令增强为按文件类型着色输出。
+// 目录显示蓝色，普通文件显示白色，可执行文件显示绿色，未授权脚本显示红色。
+func EnhanceListCommand(cmd string) string {
+	trimmed := strings.TrimSpace(cmd)
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 || parts[0] != "ls" || hasShellMeta(trimmed) {
+		return cmd
+	}
+
+	args := parts[1:]
+	if hasListOptions(args) {
+		return enhanceGNUListCommand(args)
+	}
+	if len(args) == 0 {
+		args = []string{"."}
+	}
+
+	quotedArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		quotedArgs = append(quotedArgs, shellQuote(arg))
+	}
+	return colorListShell + " " + strings.Join(quotedArgs, " ")
+}
+
+// hasListOptions 判断 ls 参数中是否包含选项；包含选项时优先保留原 ls 语义。
+func hasListOptions(args []string) bool {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			return true
+		}
+	}
+	return false
+}
+
+// enhanceGNUListCommand 使用 GNU ls 原生能力为带选项的 ls 命令开启颜色和类型后缀。
+func enhanceGNUListCommand(args []string) string {
+	quotedArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		quotedArgs = append(quotedArgs, shellQuote(arg))
+	}
+	return "LS_COLORS='di=01;34:ln=01;36:ex=01;32:*.sh=01;31:*.bash=01;31:*.py=01;31:*.pl=01;31:*.rb=01;31' ls --color=always -F " + strings.Join(quotedArgs, " ")
+}
+
+// hasShellMeta 判断命令中是否包含 shell 控制符，避免改变管道、重定向等复杂命令语义。
+func hasShellMeta(cmd string) bool {
+	return strings.ContainsAny(cmd, "|;&<>`$(){}[]*?")
+}
+
+// shellQuote 对远端 shell 参数做单引号转义，避免路径中的空格或特殊字符被解释。
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
 // IsRmCommand 判断命令是否为删除操作（rm 或 unlink）。

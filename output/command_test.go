@@ -20,3 +20,12 @@ func TestFormatBytesPerSecondZeroDuration(t *testing.T) {
 		t.Fatalf("formatBytesPerSecond() = %q, want %q", got, "0 B")
 	}
 }
+
+// TestColorize 验证终端颜色包装会包含 ANSI 开始和重置序列。
+func TestColorize(t *testing.T) {
+	got := colorize("成功", colorGreen)
+	want := colorGreen + "成功" + colorReset
+	if got != want {
+		t.Fatalf("colorize() = %q, want %q", got, want)
+	}
+}

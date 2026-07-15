@@ -214,7 +214,7 @@ func (server *Server) RunCmdContext(ctx context.Context) (result string, err err
 	}
 	defer session.Close()
 
-	cmd := server.Cmd
+	cmd := tools.EnhanceListCommand(server.Cmd)
 	bs, err := combinedOutputContext(ctx, client, session, cmd)
 	if err != nil {
 		return string(bs), err
@@ -253,7 +253,7 @@ func (server *Server) SRunCmdContext(ctx context.Context) Result {
 	}
 	defer session.Close()
 
-	cmd := server.Cmd
+	cmd := tools.EnhanceListCommand(server.Cmd)
 	bs, err := combinedOutputContext(ctx, client, session, cmd)
 	if err != nil {
 		rs.Err = err
