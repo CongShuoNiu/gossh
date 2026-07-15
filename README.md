@@ -1,6 +1,6 @@
 # gossh
 
-[中文]([[https://github.com/andesli/gossh/blob/master//README_CN.md](https://github.com/CongShuoNiu/gossh/blob/master/README_CN.md)])
+[中文]([https://github.com/CongShuoNiu/gossh/blob/master/README_CN.md])
 
 ## 1.What's gossh
 
